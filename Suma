@@ -7,3 +7,19 @@ public class Suma {
       System.out.println(a+b+c);
     }
 }
+/////////////////////////////////////////////////////////
+public class main{
+    public static void main(string{} args){
+        puerta miCoche= new puerta();
+        miCoche.puertas();
+        systen.out.println(miCoche.puertas)
+        
+    }
+}
+class carro {
+   public int puertas=0;
+   public void agregarpuertas(){
+       this.puertas++;
+       
+       
+   }
