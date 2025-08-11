@@ -1,0 +1,141 @@
+# Required libraries
+import math                          # For mathematical operations like sqrt, atan2, cos, sin
+import numpy as np                   # For arrays and math functions like linspace
+import matplotlib.pyplot as plt      # For plotting graphs
+
+# Function to convert rectangular coordinates (I, Q) to polar form (magnitude and phase)
+def rectangular_a_polar(i, q):
+    r = round(math.sqrt(i**2 + q**2), 3)  # Magnitude: sqrt(I^2 + Q^2)
+    theta = math.degrees(math.atan2(q, i))  # Phase: angle in degrees using atan2
+    return r, round(theta, 1)  # Return magnitude and rounded angle
+
+# Function to plot the constellation diagram (I/Q points)
+def plot_constellation(I_list, Q_list, labels, title):
+    plt.figure(figsize=(6, 6))
+    plt.title(title)
+    plt.axhline(0, color='gray', linewidth=0.5)   # Horizontal axis
+    plt.axvline(0, color='gray', linewidth=0.5)   # Vertical axis
+    plt.grid(True)
+    plt.gca().set_aspect('equal')  # 1:1 aspect ratio
+    for i in range(len(I_list)):
+        plt.plot(I_list[i], Q_list[i], 'bo')  # Plot each point in blue
+        plt.text(I_list[i] + 0.05, Q_list[i] + 0.05, labels[i], fontsize=10)  # Label each point
+    plt.xlabel("I Channel")
+    plt.ylabel("Q Channel")
+    plt.show()
+
+# Function to plot phasor diagram (vectors from origin to each point)
+def plot_phasor(I_list, Q_list, labels, title):
+    plt.figure(figsize=(6, 6))
+    plt.title(title)
+    plt.axhline(0, color='gray', linewidth=0.5)
+    plt.axvline(0, color='gray', linewidth=0.5)
+    plt.grid(True)
+    plt.gca().set_aspect('equal')
+    for i in range(len(I_list)):
+        plt.arrow(0, 0, I_list[i], Q_list[i], head_width=0.05, length_includes_head=True, color='blue')
+        plt.text(I_list[i] * 1.05, Q_list[i] * 1.05, labels[i], fontsize=10)
+    plt.xlabel("I Channel")
+    plt.ylabel("Q Channel")
+    plt.show()
+
+# Function to plot the time-domain output signal combining I*cos(t) and Q*sin(t)
+def plot_signal_output(I_list, Q_list, labels, title):
+    t = np.linspace(0, 2*np.pi, 500)  # Time from 0 to 2π
+    fig, axs = plt.subplots(len(I_list), 1, figsize=(8, len(I_list) * 2), sharex=True)
+    fig.suptitle(title)
+    for i in range(len(I_list)):
+        i_wave = I_list[i] * np.cos(t)  # In-phase component
+        q_wave = Q_list[i] * np.sin(t)  # Quadrature component
+        s_wave = i_wave + q_wave        # Resulting signal
+        axs[i].plot(t, s_wave, label=f'Output {labels[i]}')
+        axs[i].legend()
+        axs[i].set_ylabel('Amplitude')
+    plt.xlabel('Time (rad)')
+    plt.tight_layout()
+    plt.show()
+
+# === Modulation type menu ===
+print("Select modulation type:")
+print("1. 8-PSK")
+print("2. 16-PSK")
+opcion = input("Enter 1 or 2: ")  # User input
+
+# Validate user choice
+if opcion not in ['1', '2']:
+    print("Invalid option.")
+    exit()
+
+# Input signal amplitude levels
+nivel_bajo = float(input("Enter the low level value : "))
+nivel_alto = float(input("Enter the high level value: "))
+print()
+
+# === 8-PSK Modulation ===
+if opcion == '1':
+    print("=== 8-PSK Modulation ===")
+    tribits = ['000', '001', '010', '011', '100', '101', '110', '111']  # 3 bits per symbol
+    I_list, Q_list, labels = [], [], []
+
+    print(f"{'Tribit':<6} | {'I':>7} | {'Q':>7} | {'Magnitude':>9} | {'Phase (°)':>9}")
+    print("-" * 50)
+
+    for bits in tribits:
+        Qb = int(bits[0])  # First bit: Q sign
+        Ib = int(bits[1])  # Second bit: I sign
+        Cb = int(bits[2])  # Third bit: controls the quadrant via amplitudes
+
+        # Assign amplitude depending on control bit
+        I_abs = nivel_bajo if Cb == 0 else nivel_alto
+        Q_abs = nivel_alto if Cb == 0 else nivel_bajo
+
+        # Apply signs to I and Q
+        I_val = I_abs if Ib == 1 else -I_abs
+        Q_val = Q_abs if Qb == 1 else -Q_abs
+
+        r, phase = rectangular_a_polar(I_val, Q_val)  # Convert to polar form
+
+        # Print line for each symbol
+        print(f"{bits:<6} | {I_val:>7.3f} | {Q_val:>7.3f} | {r:>9.3f} | {phase:>9.1f}")
+        I_list.append(I_val)
+        Q_list.append(Q_val)
+        labels.append(bits)
+
+    # Generate plots
+    plot_constellation(I_list, Q_list, labels, "8-PSK Constellation")
+    plot_phasor(I_list, Q_list, labels, "8-PSK Phasor Diagram")
+    plot_signal_output(I_list, Q_list, labels, "8-PSK Output Signal (I/Q)")
+
+# === 16-PSK Modulation ===
+elif opcion == '2':
+    print("=== 16-PSK Modulation ===")
+    radio = round((nivel_bajo + nivel_alto) / 2, 3)  # Average amplitude
+
+    quadbits = [
+        '0000', '0001', '0010', '0011',
+        '0100', '0101', '0110', '0111',
+        '1000', '1001', '1010', '1011',
+        '1100', '1101', '1110', '1111'
+    ]  # 4-bit symbols
+
+    fases_deg = [11.25 + 22.5 * i for i in range(16)]  # Phase angles for 16-PSK, 22.5° apart
+    I_list, Q_list, labels = [], [], []
+
+    print(f"{'Bits':<6} | {'Phase (°)':>9} | {'I':>7} | {'Q':>7} | {'Magnitude':>9}")
+    print("-" * 50)
+
+    for bits, phase in zip(quadbits, fases_deg):
+        theta_rad = math.radians(phase)  # Convert to radians
+        I = round(radio * math.cos(theta_rad), 3)  # In-phase coordinate
+        Q = round(radio * math.sin(theta_rad), 3)  # Quadrature coordinate
+        magnitude = round(math.sqrt(I**2 + Q**2), 3)
+
+        print(f"{bits:<6} | {phase:>9.2f} | {I:>7.3f} | {Q:>7.3f} | {magnitude:>9.3f}")
+        I_list.append(I)
+        Q_list.append(Q)
+        labels.append(bits)
+
+    # Generate plots
+    plot_constellation(I_list, Q_list, labels, "16-PSK Constellation")
+    plot_phasor(I_list, Q_list, labels, "16-PSK Phasor Diagram")
+    plot_signal_output(I_list, Q_list, labels, "16-PSK Output Signal (I/Q)")
